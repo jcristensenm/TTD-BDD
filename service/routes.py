@@ -95,34 +95,86 @@ def create_products():
 
 
 ######################################################################
-# L I S T   A L L   P R O D U C T S
+# LIST PRODUCTS
 ######################################################################
+@app.route("/products", methods=["GET"])
+def list_products():
+    """Returns all products """
 
-#
-# PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
-#
+    products = []
+    name = request.args.get("name")
+    category = request.args.get("category")
+    available = request.args.get("available")
+
+    if name:
+        products = Product.find_by_name(name)
+    elif category:
+        # create enum from string
+        category_value = getattr(Category, category.upper())
+        products = Product.find_by_category(category_value)
+    elif available:
+        available_value = available.lower() in ["true", "yes", "1"]
+        products = Product.find_by_availability(available_value)
+    else:
+        products = Product.all()
+
+    results = [product.serialize() for product in products]
+    app.logger.info("[%s] Products returned", len(results))
+    return results, status.HTTP_200_OK
 
 ######################################################################
-# R E A D   A   P R O D U C T
+# READ A PRODUCT
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["GET"])
+def get_products(product_id):
+    """
+    Retrieve a single Product
 
-#
-# PLACE YOUR CODE HERE TO READ A PRODUCT
-#
+    This endpoint return a Product by id
+    """
+ 
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
+
+    app.logger.info("Returning product: %s", product.name)
+    return product.serialize(), status.HTTP_200_OK
+
 
 ######################################################################
-# U P D A T E   A   P R O D U C T
+# UPDATE AN EXISTING PRODUCT
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_products(product_id):
+    """
+    Update a Product
 
-#
-# PLACE YOUR CODE TO UPDATE A PRODUCT HERE
-#
+    This endpoint will update a Product by id
+    """
+    check_content_type("application/json")
+
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
+
+    product.deserialize(request.get_json())
+    product.id = product_id
+    product.update()
+    return product.serialize(), status.HTTP_200_OK
 
 ######################################################################
-# D E L E T E   A   P R O D U C T
+# DELETE A PRODUCT
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """
+    Delete a Product
 
+    This endpoint will delete a Product by id
+    """
 
-#
-# PLACE YOUR CODE TO DELETE A PRODUCT HERE
-#
+    product = Product.find(product_id)
+    if product:
+        product.delete()
+
+    return "", status.HTTP_204_NO_CONTENT
